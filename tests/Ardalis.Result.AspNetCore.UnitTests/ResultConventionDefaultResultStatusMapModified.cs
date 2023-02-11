@@ -4,15 +4,18 @@ using Xunit;
 
 namespace Ardalis.Result.AspNetCore.UnitTests;
 
+[Collection("ResultStatusMapTest")]
 public class ResultConventionDefaultResultStatusMapModified : BaseResultConventionTest
 {
     [Fact]
     public void RemoveResultStatus()
     {
-        var convention = new ResultConvention(new ResultStatusMap()
+        ResultStatusMap.Initialize(map => map
             .AddDefaultMap()
             .Remove(ResultStatus.Unauthorized)
             .Remove(ResultStatus.Forbidden));
+
+        var convention = new ResultConvention();
 
         var actionModelBuilder = new ActionModelBuilder()
             .AddActionFilter(new TranslateResultToActionResultAttribute());
@@ -32,9 +35,11 @@ public class ResultConventionDefaultResultStatusMapModified : BaseResultConventi
     [Fact]
     public void ChangeResultStatus()
     {
-        var convention = new ResultConvention(new ResultStatusMap()
+        ResultStatusMap.Initialize(map => map
             .AddDefaultMap()
             .For(ResultStatus.Error, HttpStatusCode.InternalServerError));
+
+        var convention = new ResultConvention();
 
         var actionModelBuilder = new ActionModelBuilder()
             .AddActionFilter(new TranslateResultToActionResultAttribute());
@@ -65,11 +70,13 @@ public class ResultConventionDefaultResultStatusMapModified : BaseResultConventi
     [InlineData(nameof(TestController.ResultEnumerableString), typeof(IEnumerable<string>), typeof(HttpGetAttribute), 200)]
     public void ChangeResultStatus_ForSpecificMethods(string actionName, Type expectedType, Type attributeType, int expectedStatusCode)
     {
-        var convention = new ResultConvention(new ResultStatusMap()
+        ResultStatusMap.Initialize(map => map
             .AddDefaultMap()
             .For(ResultStatus.Ok, HttpStatusCode.OK, opts => opts
                 .For("POST", HttpStatusCode.Created)
                 .For("DELETE", HttpStatusCode.NoContent)));
+
+        var convention = new ResultConvention();
 
         var actionModelBuilder = new ActionModelBuilder()
             .AddActionFilter(new TranslateResultToActionResultAttribute())

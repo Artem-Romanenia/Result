@@ -12,9 +12,36 @@ namespace Ardalis.Result.AspNetCore
     /// </summary>
     public class ResultStatusMap
     {
+        #region Singleton
+        private static readonly object _lock = new object();
+        private static ResultStatusMap _instance;
+        internal static ResultStatusMap Instance
+        {
+            get
+            {
+                if (_instance == null)
+                    lock (_lock)
+                        if (_instance == null)
+                            _instance = new ResultStatusMap().AddDefaultMap();
+
+                return _instance;
+            }
+        }
+
+        internal static void Initialize(Action<ResultStatusMap> configure = null)
+        {
+            var map = new ResultStatusMap();
+
+            if (configure != null) configure(map);
+            else map.AddDefaultMap();
+
+            _instance = map;
+        }
+        #endregion
+
         private readonly Dictionary<ResultStatus, ResultStatusOptions> _map = new Dictionary<ResultStatus, ResultStatusOptions>();
 
-        internal ResultStatusMap()
+        private ResultStatusMap()
         {
         }
 
@@ -89,17 +116,18 @@ namespace Ardalis.Result.AspNetCore
             set { _map[status] = value; }
         }
 
-        private static ValidationProblemDetails BadRequest(ControllerBase controller, IResult result)
+        private static ValidationProblemDetails BadRequest(IResult result)
         {
+            var dict = new Dictionary<string, string[]>();
             foreach (var error in result.ValidationErrors)
             {
-                controller.ModelState.AddModelError(error.Identifier, error.ErrorMessage);
+                dict[error.Identifier] = new[] { error.ErrorMessage };
             }
 
-            return new ValidationProblemDetails(controller.ModelState);
+            return new ValidationProblemDetails(dict);
         }
 
-        private static ProblemDetails UnprocessableEntity(ControllerBase controller, IResult result)
+        private static ProblemDetails UnprocessableEntity(IResult result)
         {
             var details = new StringBuilder("Next error(s) occured:");
 
@@ -112,7 +140,7 @@ namespace Ardalis.Result.AspNetCore
             };
         }
 
-        private static ProblemDetails NotFoundEntity(ControllerBase controller, IResult result)
+        private static ProblemDetails NotFoundEntity(IResult result)
         {
             var details = new StringBuilder("Next error(s) occured:");
 
@@ -138,7 +166,7 @@ namespace Ardalis.Result.AspNetCore
             Status = status;
         }
 
-        internal ResultStatusOptions(ResultStatus status, HttpStatusCode defaultStatusCode, Type responseType, Func<ControllerBase, IResult, object> getResponseObject)
+        internal ResultStatusOptions(ResultStatus status, HttpStatusCode defaultStatusCode, Type responseType, Func<IResult, ProblemDetails> getResponseObject)
         {
             _defaultStatusCode = defaultStatusCode;
 
@@ -149,14 +177,14 @@ namespace Ardalis.Result.AspNetCore
 
         internal ResultStatus Status { get; }
         internal Type ResponseType { get; private set; }
-        internal Func<ControllerBase, IResult, object> GetResponseObject { get; private set; }
+        internal Func<IResult, ProblemDetails> GetResponseObject { get; private set; }
 
         /// <summary>
         /// Gets Http Status Code for specific Http Method.
         /// </summary>
-        /// <param name="method"></param>
+        /// <param name="method">Method to return Status code for. If not supplied, default Status code for current Result will be returned.</param>
         /// <returns>Http Status Code for specific Http Method if configured, otherwise default Http Status Code.</returns>
-        public HttpStatusCode GetStatusCode(string method)
+        public HttpStatusCode GetStatusCode(string method = null)
         {
             method = method?.ToLower();
 
@@ -180,10 +208,11 @@ namespace Ardalis.Result.AspNetCore
         /// Sets GetResponseObject callback.
         /// </summary>
         /// <param name="getResponseObject">A <see cref="Func"/> to extract response object from Result object for specific Result Status.</param>
-        public ResultStatusOptions With<T>(Func<ControllerBase, IResult, T> getResponseObject)
+        public ResultStatusOptions With<T>(Func<IResult, T> getResponseObject)
+            where T : ProblemDetails
         {
             ResponseType = typeof(T);
-            GetResponseObject = (ctrlr, result) => getResponseObject(ctrlr, result);
+            GetResponseObject = result => getResponseObject(result);
             return this;
         }
 
@@ -195,7 +224,7 @@ namespace Ardalis.Result.AspNetCore
         /// <param name="responseType">Response Type.</param>
         /// <param name="getResponseObject">A <see cref="Func"/> to extract response object from Result object for specific Result Status.</param>
         /// <returns></returns>
-        public ResultStatusOptions With(Type responseType, Func<ControllerBase, IResult, object> getResponseObject)
+        public ResultStatusOptions With(Type responseType, Func<IResult, ProblemDetails> getResponseObject)
         {
             ResponseType = responseType;
             GetResponseObject = getResponseObject;

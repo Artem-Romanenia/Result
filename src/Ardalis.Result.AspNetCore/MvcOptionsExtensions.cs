@@ -13,10 +13,8 @@ namespace Ardalis.Result.AspNetCore
         /// </summary>
         public static MvcOptions AddDefaultResultConvention(this MvcOptions options)
         {
-            var resultStatusMap = new ResultStatusMap();
-            resultStatusMap.AddDefaultMap();
-
-            options.Conventions.Add(new ResultConvention(resultStatusMap));
+            ResultStatusMap.Initialize();
+            options.Conventions.Add(new ResultConvention());
 
             return options;
         }
@@ -29,10 +27,8 @@ namespace Ardalis.Result.AspNetCore
         /// <param name="configure">A <see cref="Action"/> to map <see cref="ResultStatus"/>es to <see cref="System.Net.HttpStatusCode"/>s</param>
         public static MvcOptions AddResultConvention(this MvcOptions options, Action<ResultStatusMap> configure = null)
         {
-            var resultStatusMap = new ResultStatusMap();
-            configure?.Invoke(resultStatusMap);
-
-            options.Conventions.Add(new ResultConvention(resultStatusMap));
+            ResultStatusMap.Initialize(configure);
+            options.Conventions.Add(new ResultConvention());
 
             return options;
         }

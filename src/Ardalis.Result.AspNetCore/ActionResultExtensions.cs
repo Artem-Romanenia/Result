@@ -59,13 +59,12 @@ namespace Ardalis.Result.AspNetCore
 
         internal static ActionResult ToActionResult(this ControllerBase controller, IResult result)
         {
-            var actionProps = controller.ControllerContext.ActionDescriptor.Properties;
+            if (!ResultStatusMap.Instance.ContainsKey(result.Status))
+            {
+                throw new NotSupportedException($"Result {result.Status} conversion is not supported.");
+            }
 
-            var resultStatusMap = actionProps.ContainsKey(ResultConvention.RESULT_STATUS_MAP_PROP) 
-                ?(actionProps[ResultConvention.RESULT_STATUS_MAP_PROP] as ResultStatusMap)
-                : new ResultStatusMap().AddDefaultMap();
-
-            var resultStatusOptions = resultStatusMap[result.Status];
+            var resultStatusOptions = ResultStatusMap.Instance[result.Status];
             var statusCode = (int)resultStatusOptions.GetStatusCode(controller.HttpContext.Request.Method);
 
             switch (result.Status)
@@ -77,7 +76,7 @@ namespace Ardalis.Result.AspNetCore
                 default:
                     return resultStatusOptions.ResponseType == null
                         ? (ActionResult)controller.StatusCode(statusCode)
-                        : controller.StatusCode(statusCode, resultStatusOptions.GetResponseObject(controller, result));
+                        : controller.StatusCode(statusCode, resultStatusOptions.GetResponseObject(result));
             }
         }
     }

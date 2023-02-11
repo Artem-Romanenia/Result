@@ -29,51 +29,35 @@ public static partial class ResultExtensions
         return ToMinimalApiResult((IResult)result);
     }
 
-    internal static Microsoft.AspNetCore.Http.IResult ToMinimalApiResult(this IResult result) =>
-        result.Status switch
-        {
-            ResultStatus.Ok => typeof(Result).IsInstanceOfType(result)
-                                    ? Results.Ok()
-                                    : Results.Ok(result.GetValue()),
-            ResultStatus.NotFound => NotFoundEntity(result),
-            ResultStatus.Unauthorized => Results.Unauthorized(),
-            ResultStatus.Forbidden => Results.Forbid(),
-            ResultStatus.Invalid => Results.BadRequest(result.ValidationErrors),
-            ResultStatus.Error => UnprocessableEntity(result),
-            _ => throw new NotSupportedException($"Result {result.Status} conversion is not supported."),
-        };
-
-    private static Microsoft.AspNetCore.Http.IResult UnprocessableEntity(IResult result)
+    internal static Microsoft.AspNetCore.Http.IResult ToMinimalApiResult(this IResult result, HttpContext context = null)
     {
-        var details = new StringBuilder("Next error(s) occured:");
-
-        foreach (var error in result.Errors) details.Append("* ").Append(error).AppendLine();
-
-        return Results.UnprocessableEntity(new ProblemDetails
+        if (!ResultStatusMap.Instance.ContainsKey(result.Status))
         {
-            Title = "Something went wrong.",
-            Detail = details.ToString()
-        });
+            throw new NotSupportedException($"Result {result.Status} conversion is not supported.");
+        }
+
+        var method = context?.Request.Method;
+
+        var resultStatusOptions = ResultStatusMap.Instance[result.Status];
+        var statusCode = (int)resultStatusOptions.GetStatusCode(method);
+
+        switch (result.Status)
+        {
+            case ResultStatus.Ok:
+                return typeof(Result).IsInstanceOfType(result)
+                    ? Results.Ok()
+                    : Results.Ok(result.GetValue());
+            default:
+                return resultStatusOptions.ResponseType == null
+                    ? Results.StatusCode(statusCode)
+                    : Results.Problem(WithStatusCode(resultStatusOptions.GetResponseObject(result), statusCode));
+        }
     }
 
-    private static Microsoft.AspNetCore.Http.IResult NotFoundEntity(IResult result)
+    private static ProblemDetails WithStatusCode(ProblemDetails details, int statusCode)
     {
-        var details = new StringBuilder("Next error(s) occured:");
-
-        if (result.Errors.Any())
-        {
-            foreach (var error in result.Errors) details.Append("* ").Append(error).AppendLine();
-
-            return Results.NotFound(new ProblemDetails
-            {
-                Title = "Resource not found.",
-                Detail = details.ToString()
-            });
-        }
-        else
-        {
-            return Results.NotFound();
-        }
+        details.Status = statusCode;
+        return details;
     }
 }
 #endif

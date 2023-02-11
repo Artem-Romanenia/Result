@@ -4,12 +4,15 @@ using Xunit;
 
 namespace Ardalis.Result.AspNetCore.UnitTests;
 
+[Collection("ResultStatusMapTest")]
 public class ResultConventionDefaultResultStatusMap : BaseResultConventionTest
 {
     [Fact]
     public void TranslateAttributeOnAction()
     {
-        var convention = new ResultConvention(new ResultStatusMap().AddDefaultMap());
+        ResultStatusMap.Initialize();
+
+        var convention = new ResultConvention();
 
         var actionModelBuilder = new ActionModelBuilder()
             .AddActionFilter(new TranslateResultToActionResultAttribute());
@@ -31,7 +34,9 @@ public class ResultConventionDefaultResultStatusMap : BaseResultConventionTest
     [Fact]
     public void TranslateAttributeOnController()
     {
-        var convention = new ResultConvention(new ResultStatusMap().AddDefaultMap());
+        ResultStatusMap.Initialize();
+
+        var convention = new ResultConvention();
 
         var actionModelBuilder = new ActionModelBuilder()
             .AddControllerFilter(new TranslateResultToActionResultAttribute());
@@ -53,7 +58,9 @@ public class ResultConventionDefaultResultStatusMap : BaseResultConventionTest
     [Fact]
     public void WithoutTranslateAttribute()
     {
-        var convention = new ResultConvention(new ResultStatusMap().AddDefaultMap());
+        ResultStatusMap.Initialize();
+
+        var convention = new ResultConvention();
 
         var actionModelBuilder = new ActionModelBuilder();
 
@@ -67,7 +74,9 @@ public class ResultConventionDefaultResultStatusMap : BaseResultConventionTest
     [Fact]
     public void ExistingProducesResponseTypeAttributePreserved()
     {
-        var convention = new ResultConvention(new ResultStatusMap().AddDefaultMap());
+        ResultStatusMap.Initialize();
+
+        var convention = new ResultConvention();
 
         var actionModelBuilder = new ActionModelBuilder()
             .AddActionFilter(new TranslateResultToActionResultAttribute())
@@ -92,7 +101,9 @@ public class ResultConventionDefaultResultStatusMap : BaseResultConventionTest
     [InlineData(nameof(TestController.ResultEnumerableString), typeof(IEnumerable<string>))]
     public void ResultWithValue(string actionName, Type expectedType)
     {
-        var convention = new ResultConvention(new ResultStatusMap().AddDefaultMap());
+        ResultStatusMap.Initialize();
+
+        var convention = new ResultConvention();
 
         var actionModelBuilder = new ActionModelBuilder()
             .AddActionFilter(new TranslateResultToActionResultAttribute());

@@ -16,13 +16,8 @@ namespace Ardalis.Result.AspNetCore
 {
     internal class ResultConvention : IActionModelConvention
     {
-        public const string RESULT_STATUS_MAP_PROP = "ResultStatusMap";
-
-        private readonly ResultStatusMap _map;
-
-        internal ResultConvention(ResultStatusMap map)
+        internal ResultConvention()
         {
-            _map = map;
         }
 
         public void Apply(ActionModel action)
@@ -30,7 +25,7 @@ namespace Ardalis.Result.AspNetCore
             if (!action.Filters.Any(f => f is TranslateResultToActionResultAttribute tr)
                 && !action.Controller.Filters.Any(f => f is TranslateResultToActionResultAttribute tr)) return;
 
-            action.Properties[RESULT_STATUS_MAP_PROP] = _map;
+            var map = ResultStatusMap.Instance;
 
             var returnType = action.ActionMethod.ReturnType;
 
@@ -47,8 +42,8 @@ namespace Ardalis.Result.AspNetCore
             {
                 var method = (action.Attributes.FirstOrDefault(a => a is HttpMethodAttribute) as HttpMethodAttribute)?.HttpMethods.FirstOrDefault();
 
-                var successStatusCode = _map.ContainsKey(ResultStatus.Ok)
-                    ? _map[ResultStatus.Ok].GetStatusCode(method)
+                var successStatusCode = map.ContainsKey(ResultStatus.Ok)
+                    ? map[ResultStatus.Ok].GetStatusCode(method)
                     : HttpStatusCode.OK;
 
                 /*
@@ -72,18 +67,18 @@ namespace Ardalis.Result.AspNetCore
 
                 if (attr?.ResultStatuses != null)
                 {
-                    var unexpectedResults = attr.ResultStatuses.Where(s => !_map.Keys.Contains(s));
+                    var unexpectedResults = attr.ResultStatuses.Where(s => !map.Keys.Contains(s));
                     if (unexpectedResults.Any())
                     {
                         throw new UnexpectedFailureResultsException(unexpectedResults);
                     }
                 }
 
-                var resultStatuses = attr?.ResultStatuses ?? _map.Keys;
+                var resultStatuses = attr?.ResultStatuses ?? map.Keys;
 
                 foreach (var status in resultStatuses.Where(s => s != ResultStatus.Ok))
                 {
-                    var info = _map[status];
+                    var info = map[status];
                     AddProducesResponseTypeAttribute(action.Filters, (int)info.GetStatusCode(method), info.ResponseType);
                 }
             }

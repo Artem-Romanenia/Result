@@ -5,12 +5,15 @@ using Xunit;
 
 namespace Ardalis.Result.AspNetCore.UnitTests
 {
+    [Collection("ResultStatusMapTest")]
     public class ResultConventionExpectedFailures : BaseResultConventionTest
     {
         [Fact]
         public void DefaultResultStatusMap()
         {
-            var convention = new ResultConvention(new ResultStatusMap().AddDefaultMap());
+            ResultStatusMap.Initialize();
+
+            var convention = new ResultConvention();
 
             var actionModelBuilder = new ActionModelBuilder()
                 .AddActionFilter(new TranslateResultToActionResultAttribute())
@@ -30,9 +33,11 @@ namespace Ardalis.Result.AspNetCore.UnitTests
         [Fact]
         public void DefaultResultStatusMap_UnexpectedResults()
         {
-            var convention = new ResultConvention(new ResultStatusMap()
+            ResultStatusMap.Initialize(map => map
                 .For(ResultStatus.Ok, System.Net.HttpStatusCode.OK)
                 .For(ResultStatus.NotFound, System.Net.HttpStatusCode.NotFound));
+
+            var convention = new ResultConvention();
 
             var actionModelBuilder = new ActionModelBuilder()
                 .AddActionFilter(new TranslateResultToActionResultAttribute())
